@@ -109,19 +109,24 @@ function calculatePollutantAQI(concentration: number, pollutant: string): number
 function calculateAQI(co: number, no2: number, o3: number, so2: number, pm25: number, pm10: number): number {
 
     // Convert pollutant values to appropriate units
-    const co_ppm = co / 1000; // Convert CO from µg/m³ to ppm
-    const no2_ppb = no2 / 1.88; // Convert NO2 from µg/m³ to ppb
-    const o3_ppb = o3 / 1.96; // Convert O3 from µg/m³ to ppb
-    const so2_ppb = so2 / 2.62; // Convert SO2 from µg/m³ to ppb
+    const co_ppm: number = 257 / 1000000; // Convert CO from µg/m³ to ppm
+    const no2_ppm: number = 5.699999809265137 / 1000000; // Convert NO2 from µg/m³ to ppm
+    const o3_ppm: number = 150.1999969482422 / 1000000; // Convert O3 from µg/m³ to ppm
+    const so2_ppm: number = 6.599999904632568 / 1000000; // Convert SO2 from µg/m³ to ppm
+    const pm2_5_ppm: number = 15.800000190734863 / 1000000; // Convert PM2.5 from µg/m³ to ppm
+    const pm10_ppm: number = 17.5 / 1000000; // Convert PM10 from µg/m³ to ppm
+    
+
 
     // Calculate AQI for each pollutant
     const coAQI = calculatePollutantAQI(co_ppm, "co");
-    const no2AQI = calculatePollutantAQI(no2_ppb, "no2");
-    const o3AQI = calculatePollutantAQI(o3_ppb, "o3");
-    const so2AQI = calculatePollutantAQI(so2_ppb, "so2");
-    const pm25AQI = calculatePollutantAQI(pm25, "pm2.5");
-    const pm10AQI = calculatePollutantAQI(pm10, "pm10");
+    const no2AQI = calculatePollutantAQI(no2_ppm, "no2");
+    const o3AQI = calculatePollutantAQI(o3_ppm, "o3");
+    const so2AQI = calculatePollutantAQI(so2_ppm, "so2");
+    const pm25AQI = calculatePollutantAQI(pm2_5_ppm, "pm2.5");
+    const pm10AQI = calculatePollutantAQI(pm10_ppm, "pm10");
 
+    console.log(Math.max(coAQI, no2AQI, o3AQI, so2AQI, pm25AQI, pm10AQI))
     return Math.max(coAQI, no2AQI, o3AQI, so2AQI, pm25AQI, pm10AQI);
 }
 
@@ -130,7 +135,7 @@ function describeAirQuality(data: AirQuality): { emoji: string, text: string, ma
     const aqi = calculateAQI(data.co, data.no2, data.o3, data.so2, data.pm2_5, data.pm10);
 
     const unsafePollutants = [
-        { name: 'CO', value: data.coAQI },
+        { name: 'CO', value: data.co },
         { name: 'NO2', value: data.no2 },
         { name: 'O3', value: data.o3 },
         { name: 'SO2', value: data.so2 },
@@ -237,7 +242,10 @@ export default class ObsidianWeatherPlugin extends Plugin {
     async refreshWeather() {
         if (!this.settings.apiKey || !this.settings.location) return;
 
-        const url = `http://api.weatherapi.com/v1/current.json?key=${this.settings.apiKey}&q=${this.settings.location}&aqi=yes`;
+        // original
+        // const url = `http://api.weatherapi.com/v1/current.json?key=${this.settings.apiKey}&q=${this.settings.location}&aqi=yes`;
+        // New URL with 3 day forecast and rain info
+        const url = `http://api.weatherapi.com/v1/current.json?key=${this.settings.apiKey}&q=${this.settings.location}&aqi=yes&days=3&alerts=yes`;
         try {
             const response = await fetch(url);
             if (!response.ok) {
