@@ -33,9 +33,57 @@ interface Location {
     localtime: string;
 }
 
+interface DayForecast {
+    maxtemp_c: number;
+    maxtemp_f: number;
+    mintemp_c: number;
+    mintemp_f: number;
+    avgtemp_c: number;
+    avgtemp_f: number;
+    maxwind_mph: number;
+    maxwind_kph: number;
+    totalprecip_mm: number;
+    totalprecip_in: number;
+    totalsnow_cm: number;
+    avgvis_km: number;
+    avgvis_miles: number;
+    avghumidity: number;
+    daily_will_it_rain: number;
+    daily_chance_of_rain: number;
+    daily_will_it_snow: number;
+    daily_chance_of_snow: number;
+    condition: Condition;
+    uv: number;
+}
+
+interface Astro {
+    sunrise: string;
+    sunset: string;
+    moonrise: string;
+    moonset: string;
+    moon_phase: string;
+    moon_illumination: string;
+    is_moon_up: number;
+    is_sun_up: number;
+}
+
+interface ForecastDay {
+    date: string;
+    date_epoch: number;
+    day: DayForecast;
+    astro: Astro;
+    hour: any[]; // You can replace 'any' with a more specific interface if needed
+}
+
+interface Forecast {
+    forecastday: ForecastDay[];
+}
+
+
 interface WeatherAPIResponse {
     current: Current;
     location: Location;
+    forecast?: Forecast;
 }
 
 interface WeatherPluginSettings {
@@ -74,7 +122,7 @@ function calculatePollutantAQI(concentration: number, pollutant: string): number
     let breakpoints: number[], AQIcalc: number;
     switch (pollutant) {
         case "co":
-            breakpoints = [4.5, 9.5, 12.5, 15.5, 30.5, 40.5, 50.5];
+            breakpoints = [0, 2, 9, 15, 30, 40, 50];
             AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
             break;
         case "no2":
@@ -82,15 +130,15 @@ function calculatePollutantAQI(concentration: number, pollutant: string): number
             AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
             break;
         case "o3":
-            breakpoints = [54, 71, 86, 106, 201, 605];
-            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 500]);
+            breakpoints = [0, 54, 71, 86, 106, 201, 605];
+            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 500]);
             break;
         case "so2":
             breakpoints = [36, 76, 186, 305, 605, 805, 1004];
             AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
             break;
         case "pm2.5":
-            breakpoints = [12.1, 35.5, 55.5, 150.5, 250.5, 350.5, 500.5];
+            breakpoints = [0, 12, 35.4, 55.4, 150.4, 250.4, 350.4, 500.4];
             AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
             break;
         case "pm10":
@@ -106,16 +154,15 @@ function calculatePollutantAQI(concentration: number, pollutant: string): number
 }
 
 
-function calculateAQI(co: number, no2: number, o3: number, so2: number, pm25: number, pm10: number): number {
 
-    // Convert pollutant values to appropriate units
-    const co_ppm: number = 257 / 1000000; // Convert CO from µg/m³ to ppm
-    const no2_ppm: number = 5.699999809265137 / 1000000; // Convert NO2 from µg/m³ to ppm
-    const o3_ppm: number = 150.1999969482422 / 1000000; // Convert O3 from µg/m³ to ppm
-    const so2_ppm: number = 6.599999904632568 / 1000000; // Convert SO2 from µg/m³ to ppm
-    const pm2_5_ppm: number = 15.800000190734863 / 1000000; // Convert PM2.5 from µg/m³ to ppm
-    const pm10_ppm: number = 17.5 / 1000000; // Convert PM10 from µg/m³ to ppm
-    
+function calculateAQI(co: number, no2: number, o3: number, so2: number, pm25: number, pm10: number): number {
+    // Convert pollutant values from µg/m³ to ppm
+    const co_ppm = co / 1000; // Convert CO from µg/m³ to ppm
+    const no2_ppm = no2 / 1889; // Convert NO2 from µg/m³ to ppm
+    const o3_ppm = o3 / 2000; // Convert O3 from µg/m³ to ppm
+    const so2_ppm = so2 / 2649; // Convert SO2 from µg/m³ to ppm
+    const pm25_ppm = pm25; // PM2.5 is already in µg/m³, no conversion needed
+    const pm10_ppm = pm10; // PM10 is already in µg/m³, no conversion needed
 
 
     // Calculate AQI for each pollutant
@@ -123,27 +170,31 @@ function calculateAQI(co: number, no2: number, o3: number, so2: number, pm25: nu
     const no2AQI = calculatePollutantAQI(no2_ppm, "no2");
     const o3AQI = calculatePollutantAQI(o3_ppm, "o3");
     const so2AQI = calculatePollutantAQI(so2_ppm, "so2");
-    const pm25AQI = calculatePollutantAQI(pm2_5_ppm, "pm2.5");
+    const pm25AQI = calculatePollutantAQI(pm25_ppm, "pm2.5");
     const pm10AQI = calculatePollutantAQI(pm10_ppm, "pm10");
 
-    console.log(Math.max(coAQI, no2AQI, o3AQI, so2AQI, pm25AQI, pm10AQI))
     return Math.max(coAQI, no2AQI, o3AQI, so2AQI, pm25AQI, pm10AQI);
+
+
 }
 
 
 function describeAirQuality(data: AirQuality): { emoji: string, text: string, mainContributors: string } {
     const aqi = calculateAQI(data.co, data.no2, data.o3, data.so2, data.pm2_5, data.pm10);
+    // console.log(aqi);
+    let unsafeDescriptions = "";
+    if (aqi > 50) {
+        const unsafePollutants = [
+            { name: 'CO', value: data.co },
+            { name: 'NO2', value: data.no2 },
+            { name: 'O3', value: data.o3 },
+            { name: 'SO2', value: data.so2 },
+            { name: 'PM2.5', value: data.pm2_5 },
+            { name: 'PM10', value: data.pm10 },
+        ].filter(pollutant => calculatePollutantAQI(pollutant.value, pollutant.name.toLowerCase()) >= 100);
 
-    const unsafePollutants = [
-        { name: 'CO', value: data.co },
-        { name: 'NO2', value: data.no2 },
-        { name: 'O3', value: data.o3 },
-        { name: 'SO2', value: data.so2 },
-        { name: 'PM2.5', value: data.pm2_5 },
-        { name: 'PM10', value: data.pm10 },
-    ].filter(pollutant => calculatePollutantAQI(pollutant.value, pollutant.name.toLowerCase()) >= 100);
-
-    const unsafeDescriptions = unsafePollutants.map(pollutant => `${pollutant.name}: ${pollutant.value.toFixed(3)} µg/m³`).join(', ');
+        unsafeDescriptions = unsafePollutants.map(pollutant => `${pollutant.name}: ${pollutant.value.toFixed(3)} µg/m³`).join(', ');
+    }
 
     let airQualityEmoji: string;
     let airQualityText: string;
@@ -170,7 +221,19 @@ function describeAirQuality(data: AirQuality): { emoji: string, text: string, ma
     return { emoji: airQualityEmoji, text: airQualityText, mainContributors: unsafeDescriptions };
 }
 
-
+function getUVIndexDescription(uvIndex: number): string {
+    if (uvIndex >= 0 && uvIndex <= 2) {
+        return "Low";
+    } else if (uvIndex <= 5) {
+        return "Moderate";
+    } else if (uvIndex <= 7) {
+        return "High";
+    } else if (uvIndex <= 10) {
+        return "Very High";
+    } else {
+        return "Extreme";
+    }
+}
 
 class WeatherView extends ItemView {
     plugin: ObsidianWeatherPlugin;
@@ -186,6 +249,7 @@ class WeatherView extends ItemView {
         this.plugin.refreshWeather();
     }
 
+
     getViewType(): string {
         return 'WeatherView';
     }
@@ -194,12 +258,19 @@ class WeatherView extends ItemView {
         return 'Obsidian Weather';
     }
 
+
     getIcon(): string {
         return 'cloud-sun'; // Or whatever icon you want to use
     }
 
     setContent(html: string) {
         this.contentEl.innerHTML = html;
+
+    }
+
+    async onOpen() {
+        // Schedule the initial refresh when the view is opened
+        this.plugin.scheduleRefresh();
     }
 }
 
@@ -213,10 +284,9 @@ export default class ObsidianWeatherPlugin extends Plugin {
 
         this.addSettingTab(new WeatherSettingTab(this.app, this));
 
-
         this.registerView('WeatherView', (leaf: WorkspaceLeaf) => {
             const view = new WeatherView(leaf, this);
-            this.refreshWeather(); // refresh weather when the plugin first starts
+            this.refreshWeather(); // Refresh weather when the plugin first starts
             return view;
         });
 
@@ -234,18 +304,20 @@ export default class ObsidianWeatherPlugin extends Plugin {
             id: 'refresh-weather',
             name: 'Refresh Weather',
             callback: () => {
-                this.refreshWeather(); // call refreshWeather on the plugin instance, not the view
+                this.refreshWeather(); // Call refreshWeather on the plugin instance, not the view
             },
         });
+
+        // Refresh the weather when the plugin first starts
+        this.refreshWeather();
     }
 
     async refreshWeather() {
+        // console.log('Refreshing weather...');
         if (!this.settings.apiKey || !this.settings.location) return;
 
-        // original
-        // const url = `http://api.weatherapi.com/v1/current.json?key=${this.settings.apiKey}&q=${this.settings.location}&aqi=yes`;
-        // New URL with 3 day forecast and rain info
-        const url = `http://api.weatherapi.com/v1/current.json?key=${this.settings.apiKey}&q=${this.settings.location}&aqi=yes&days=3&alerts=yes`;
+        const url = `http://api.weatherapi.com/v1/forecast.json?key=${this.settings.apiKey}&q=${this.settings.location}&days=3&aqi=yes`;
+
         try {
             const response = await fetch(url);
             if (!response.ok) {
@@ -253,8 +325,30 @@ export default class ObsidianWeatherPlugin extends Plugin {
             }
             const data: WeatherAPIResponse = await response.json();
 
-            const weatherHTML = this.createWeatherHTML(data);
-            this.updateWeatherLeaf(weatherHTML);
+            if (data.forecast) {
+                const { forecastday } = data.forecast;
+
+                // Extract forecast and rain info for each day
+                const forecastDay1 = forecastday[0];
+                const chance_rain_day1 = forecastDay1.day.daily_chance_of_rain;
+                const icon_day1 = forecastDay1.day.condition.icon;
+                const description_day1 = forecastDay1.day.condition.text;
+
+                const forecastDay2 = forecastday[1];
+                const chance_rain_day2 = forecastDay2.day.daily_chance_of_rain;
+                const icon_day2 = forecastDay2.day.condition.icon;
+                const description_day2 = forecastDay2.day.condition.text;
+
+                const forecastDay3 = forecastday[2];
+                const chance_rain_day3 = forecastDay3.day.daily_chance_of_rain;
+                const icon_day3 = forecastDay3.day.condition.icon;
+                const description_day3 = forecastDay3.day.condition.text;
+
+                // Remaining code...
+
+                const weatherHTML = this.createWeatherHTML(data);
+                this.updateWeatherLeaf(weatherHTML);
+            }
         } catch (error) {
             console.error('Error fetching weather data:', error);
         }
@@ -287,9 +381,37 @@ export default class ObsidianWeatherPlugin extends Plugin {
         this.scheduleRefresh();
     }
 
+
+
     createWeatherHTML(data: WeatherAPIResponse): string {
-        const { current, location } = data;
-        const { condition, air_quality } = current;
+        const { current, location, forecast } = data;
+        const { condition, air_quality, uv } = current;
+
+        const forecastDay1 = forecast?.forecastday[0];
+        const forecastDay2 = forecast?.forecastday[1];
+        const forecastDay3 = forecast?.forecastday[2];
+
+        let date_day1 = "";
+        let date_day2 = "";
+        let date_day3 = "";
+        if (forecastDay1) {
+            date_day1 = new Date(forecastDay1.date_epoch * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        if (forecastDay2) {
+            date_day2 = new Date(forecastDay2.date_epoch * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        if (forecastDay3) {
+            date_day3 = new Date(forecastDay3.date_epoch * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        let icon_day1 = forecastDay1?.day.condition.icon || "";
+        let icon_day2 = forecastDay2?.day.condition.icon || "";
+        let icon_day3 = forecastDay3?.day.condition.icon || "";
+
+        let chance_rain_day1 = forecastDay1?.day.daily_chance_of_rain.toString() || "";
+        let chance_rain_day2 = forecastDay2?.day.daily_chance_of_rain.toString() || "";
+        let chance_rain_day3 = forecastDay3?.day.daily_chance_of_rain.toString() || "";
+
 
         const aqi = calculateAQI(
             air_quality.co,
@@ -302,42 +424,74 @@ export default class ObsidianWeatherPlugin extends Plugin {
 
         const { emoji: airQualityEmoji, text: airQualityText, mainContributors: unsafeContributors } = describeAirQuality(air_quality);
 
-        const airQualityDescription = `${airQualityEmoji} ${airQualityText}`;
+        // const airQualityDescription = `${airQualityEmoji} ${airQualityText}`;
+        const airQualityDescription = `${airQualityEmoji} ${airQualityText} (AQI: ${aqi})`;
+
+
         const airQualityContributors = `${unsafeContributors}`;
+
+        const uvIndexDescription = getUVIndexDescription(uv);
+        const uvIndexText = `UV: ${uv} - ${uvIndexDescription}`;
 
 
         return `
         <div style="text-align: center;">
-        <div style="font-size: 1.2em;">${location.name}</div>
-        <div style="display: flex; align-items: center; justify-content: center;">
-          <div style="margin-right: 10px;">
-            <img src="http:${condition.icon}" alt="${condition.text}" style="width: 128px; height: 128px;">
-          </div>
-          <div style="margin-top: -10px; text-align: center; display: flex; flex-direction: column;">
-            <div>${current.temp_c}°C <span style="font-size: 1.1em; font-weight: bold; color: var(--color-accent);">${current.feelslike_c}°C</span></div>
-            <div>Humidity: ${current.humidity}%</div>
-          </div>
+            <div style="font-size: 1.2em; margin-bottom: -20px;">${location.name}</div>
+            <div style="display: flex; align-items: center; justify-content: center;">
+                <div style="margin-right: 5px;">
+                    <img src="http:${condition.icon}" alt="${condition.text}" style="width: 128px; height: 128px;" />
+                </div>
+                <div style="margin-left: 5px; text-align: center; display: flex; flex-direction: column;">
+                    <div>${current.temp_c}°C <span style="font-size: 1.1em; font-weight: bold; color: var(--color-accent);">${current.feelslike_c}°C</span></div>
+                    <div>Humidity: ${current.humidity}%</div>
+                    <div>${uvIndexText}</div>
+                </div>
+            </div>
+            <div style="color: var(--color-accent); font-size: 1.2em; margin-top: -20px; text-align: center;">${condition.text}</div>
+            <div style="text-align: center;">${airQualityDescription}</div>
+            <div style="color: var(--color-accent); margin-bottom: 10px; text-align: center;">${airQualityContributors}</div>
+            <div style="display: flex; justify-content: center;">
+                <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
+                    <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day1 === new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ? 'TODAY' : date_day1}</div>
+                    <img src="http:${icon_day1}" alt="Day 1" style="width: 48px; height: 48px;" />
+                    <div>${chance_rain_day1}%</div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
+                    <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day2}</div>
+                    <img src="http:${icon_day2}" alt="Day 2" style="width: 48px; height: 48px;" />
+                    <div>${chance_rain_day2}%</div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day3}</div>
+                    <img src="http:${icon_day3}" alt="Day 3" style="width: 48px; height: 48px;" />
+                    <div>${chance_rain_day3}%</div>
+                </div>
+            </div>
+            <div style="color: gray; margin-right: 5px; margin-bottom: 30px; font-size: 0.7em; text-align: right;">${location.localtime}</div>
         </div>
-        <div style="color: var(--color-accent); font-size: 1.2em; margin-top: -20px; text-align: center;">${condition.text}</div>
-        <div style="text-align: center;">${airQualityDescription}</div>
-        <div style="color: var(--color-accent); margin-bottom: 10px; text-align: center;">${airQualityContributors}</div>
-        <div style="color: gray; margin-right: 5px; margin-bottom: 30px; font-size: 12px; text-align: right;">${location.localtime}</div>
-      </div>
+      
       `;
     }
 
-    // Function to update the weather leaf
-    updateWeatherLeaf(weatherHTML: string) {
-        const leaves = this.app.workspace.getLeavesOfType('WeatherView');
-        if (leaves.length) {
-            const view = leaves[0].view as WeatherView;
-            view.setContent(weatherHTML);
-        }
+
+
+
+// Function to update the weather leaf
+updateWeatherLeaf(weatherHTML: string) {
+    const leaves = this.app.workspace.getLeavesOfType('WeatherView');
+    if (leaves.length) {
+        const view = leaves[0].view as WeatherView;
+        // view.contentEl.innerHTML = weatherHTML;
+        view.setContent(weatherHTML);
     }
+}
 
     async onunload() {
-        await this.saveData(this.settings);
+    if (this.refreshTimer) {
+        clearTimeout(this.refreshTimer); // Clear the timer when unloading the plugin
     }
+    await this.saveData(this.settings);
+}
 
 }
 
@@ -407,7 +561,3 @@ class WeatherSettingTab extends PluginSettingTab {
                 }));
     }
 }
-
-
-
-
