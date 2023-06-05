@@ -19,6 +19,7 @@ interface AirQuality {
 
 interface Current {
     temp_c: number;
+    feelslike_c: number;
     condition: Condition;
     wind_kph: number;
     humidity: number;
@@ -115,34 +116,36 @@ function linearInterpolate(value: number, x: number[], y: number[]): number {
 }
 
 
+
+
 function calculatePollutantAQI(concentration: number, pollutant: string): number {
     const c = concentration;
-    let AQI: number;
+    let AQI;
 
-    let breakpoints: number[], AQIcalc: number;
+    let breakpoints, AQIcalc;
     switch (pollutant) {
         case "co":
-            breakpoints = [0, 2, 9, 15, 30, 40, 50];
+            breakpoints = [0, 4.4, 9.4, 12.4, 15.4, 30.4, 40.4, 50.4];
             AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
             break;
         case "no2":
-            breakpoints = [54, 101, 361, 650, 1250, 1650, 2049];
-            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
+            breakpoints = [0, 53, 100, 360, 649, 1249];
+            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300]);
             break;
         case "o3":
-            breakpoints = [0, 54, 71, 86, 106, 201, 605];
-            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 500]);
+            breakpoints = [0, 54, 70, 85, 105, 200];
+            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300]);
             break;
         case "so2":
-            breakpoints = [36, 76, 186, 305, 605, 805, 1004];
-            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
+            breakpoints = [0, 35, 75, 185, 304, 604];
+            AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300]);
             break;
         case "pm2.5":
-            breakpoints = [0, 12, 35.4, 55.4, 150.4, 250.4, 350.4, 500.4];
+            breakpoints = [0, 12.0, 35.4, 55.4, 150.4, 250.4, 350.4, 500.4];
             AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
             break;
         case "pm10":
-            breakpoints = [54, 155, 255, 355, 425, 505, 605];
+            breakpoints = [0, 54, 154, 254, 354, 424, 504, 604];
             AQIcalc = linearInterpolate(c, breakpoints, [0, 50, 100, 150, 200, 300, 400, 500]);
             break;
         default:
@@ -156,32 +159,23 @@ function calculatePollutantAQI(concentration: number, pollutant: string): number
 
 
 function calculateAQI(co: number, no2: number, o3: number, so2: number, pm25: number, pm10: number): number {
-    // Convert pollutant values from µg/m³ to ppm
-    const co_ppm = co / 1000; // Convert CO from µg/m³ to ppm
-    const no2_ppm = no2 / 1889; // Convert NO2 from µg/m³ to ppm
-    const o3_ppm = o3 / 2000; // Convert O3 from µg/m³ to ppm
-    const so2_ppm = so2 / 2649; // Convert SO2 from µg/m³ to ppm
-    const pm25_ppm = pm25; // PM2.5 is already in µg/m³, no conversion needed
-    const pm10_ppm = pm10; // PM10 is already in µg/m³, no conversion needed
+    const co_ppm = co / 1000;
+    const no2_ppm = no2 / 1000;
+    const o3_ppm = o3 / 1000;
+    const so2_ppm = so2 / 1000;
 
-
-    // Calculate AQI for each pollutant
     const coAQI = calculatePollutantAQI(co_ppm, "co");
     const no2AQI = calculatePollutantAQI(no2_ppm, "no2");
     const o3AQI = calculatePollutantAQI(o3_ppm, "o3");
     const so2AQI = calculatePollutantAQI(so2_ppm, "so2");
-    const pm25AQI = calculatePollutantAQI(pm25_ppm, "pm2.5");
-    const pm10AQI = calculatePollutantAQI(pm10_ppm, "pm10");
+    const pm25AQI = calculatePollutantAQI(pm25, "pm2.5");
+    const pm10AQI = calculatePollutantAQI(pm10, "pm10");
 
     return Math.max(coAQI, no2AQI, o3AQI, so2AQI, pm25AQI, pm10AQI);
-
-
 }
-
 
 function describeAirQuality(data: AirQuality): { emoji: string, text: string, mainContributors: string } {
     const aqi = calculateAQI(data.co, data.no2, data.o3, data.so2, data.pm2_5, data.pm10);
-    // console.log(aqi);
     let unsafeDescriptions = "";
     if (aqi > 50) {
         const unsafePollutants = [
@@ -193,7 +187,8 @@ function describeAirQuality(data: AirQuality): { emoji: string, text: string, ma
             { name: 'PM10', value: data.pm10 },
         ].filter(pollutant => calculatePollutantAQI(pollutant.value, pollutant.name.toLowerCase()) >= 100);
 
-        unsafeDescriptions = unsafePollutants.map(pollutant => `${pollutant.name}: ${pollutant.value.toFixed(3)} µg/m³`).join(', ');
+        unsafeDescriptions = unsafePollutants.map(pollutant => `${pollutant.name}: ${pollutant.value.toFixed(0)} µg/m³`).join(', ');
+
     }
 
     let airQualityEmoji: string;
@@ -220,6 +215,49 @@ function describeAirQuality(data: AirQuality): { emoji: string, text: string, ma
 
     return { emoji: airQualityEmoji, text: airQualityText, mainContributors: unsafeDescriptions };
 }
+
+
+// function describeAirQuality(data: AirQuality): { emoji: string, text: string, mainContributors: string } {
+//     const aqi = calculateAQI(data.co, data.no2, data.o3, data.so2, data.pm2_5, data.pm10);
+//     // console.log(aqi);
+//     let unsafeDescriptions = "";
+//     if (aqi > 50) {
+//         const unsafePollutants = [
+//             { name: 'CO', value: data.co },
+//             { name: 'NO2', value: data.no2 },
+//             { name: 'O3', value: data.o3 },
+//             { name: 'SO2', value: data.so2 },
+//             { name: 'PM2.5', value: data.pm2_5 },
+//             { name: 'PM10', value: data.pm10 },
+//         ].filter(pollutant => calculatePollutantAQI(pollutant.value, pollutant.name.toLowerCase()) >= 100);
+
+//         unsafeDescriptions = unsafePollutants.map(pollutant => `${pollutant.name}: ${pollutant.value.toFixed(3)} µg/m³`).join(', ');
+//     }
+
+//     let airQualityEmoji: string;
+//     let airQualityText: string;
+//     if (aqi <= 50) {
+//         airQualityEmoji = "😀";
+//         airQualityText = "Good";
+//     } else if (aqi <= 100) {
+//         airQualityEmoji = "😐";
+//         airQualityText = "Moderate";
+//     } else if (aqi <= 150) {
+//         airQualityEmoji = "😷";
+//         airQualityText = "Unhealthy for Sensitive Groups";
+//     } else if (aqi <= 200) {
+//         airQualityEmoji = "🤢";
+//         airQualityText = "Unhealthy";
+//     } else if (aqi <= 300) {
+//         airQualityEmoji = "🤮";
+//         airQualityText = "Very Unhealthy";
+//     } else {
+//         airQualityEmoji = "💀";
+//         airQualityText = "Hazardous";
+//     }
+
+//     return { emoji: airQualityEmoji, text: airQualityText, mainContributors: unsafeDescriptions };
+// }
 
 function getUVIndexDescription(uvIndex: number): string {
     if (uvIndex >= 0 && uvIndex <= 2) {
@@ -383,9 +421,139 @@ export default class ObsidianWeatherPlugin extends Plugin {
 
 
 
+    // createWeatherHTML(data: WeatherAPIResponse): string {
+    //     const { current, location, forecast } = data;
+    //     const { condition, air_quality, uv } = current;
+
+    //     const forecastDay1 = forecast?.forecastday[0];
+    //     const forecastDay2 = forecast?.forecastday[1];
+    //     const forecastDay3 = forecast?.forecastday[2];
+
+    //     let date_day1 = "";
+    //     let date_day2 = "";
+    //     let date_day3 = "";
+    //     if (forecastDay1) {
+    //         date_day1 = new Date(forecastDay1.date_epoch * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    //     }
+    //     if (forecastDay2) {
+    //         date_day2 = new Date(forecastDay2.date_epoch * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    //     }
+    //     if (forecastDay3) {
+    //         date_day3 = new Date(forecastDay3.date_epoch * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    //     }
+
+    //     let icon_day1 = forecastDay1?.day.condition.icon || "";
+    //     let icon_day2 = forecastDay2?.day.condition.icon || "";
+    //     let icon_day3 = forecastDay3?.day.condition.icon || "";
+
+    //     let chance_rain_day1 = forecastDay1?.day.daily_chance_of_rain.toString() || "";
+    //     let chance_rain_day2 = forecastDay2?.day.daily_chance_of_rain.toString() || "";
+    //     let chance_rain_day3 = forecastDay3?.day.daily_chance_of_rain.toString() || "";
+
+
+    //     const aqi = calculateAQI(
+    //         air_quality.co,
+    //         air_quality.no2,
+    //         air_quality.o3,
+    //         air_quality.so2,
+    //         air_quality.pm2_5,
+    //         air_quality.pm10
+    //     );
+
+    //     const { emoji: airQualityEmoji, text: airQualityText, mainContributors: unsafeContributors } = describeAirQuality(air_quality);
+
+    //     const airQualityDescription = `${airQualityEmoji} ${airQualityText} (AQI: ${aqi} - ${air_quality["us-epa-index"]})`;
+
+    //     const airQualityContributors = `${unsafeContributors}`;
+
+    //     const uvIndexDescription = getUVIndexDescription(uv);
+    //     const uvIndexText = `UV: ${uv} - ${uvIndexDescription}`;
+
+
+    //     return `
+    //     <div style="text-align: center;">
+    //         <div style="font-size: 1.2em; margin-bottom: -20px;">${location.name}</div>
+    //         <div style="display: flex; align-items: center; justify-content: center;">
+    //             <div style="margin-right: 5px;">
+    //                 <img src="http:${condition.icon}" alt="${condition.text}" style="width: 120px; height: 120px;" />
+    //             </div>
+    //             <div style="margin-left: 5px; text-align: center; display: flex; flex-direction: column;">
+    //                 <div>${current.temp_c}°C <span style="font-size: 1.1em; font-weight: bold; color: var(--color-accent);">${current.feelslike_c}°C</span></div>
+    //                 <div>Humidity: ${current.humidity}%</div>
+    //                 <div>${uvIndexText}</div>
+    //             </div>
+    //         </div>
+    //         <div style="color: var(--color-accent); font-size: 1.2em; margin-top: -20px; text-align: center;">${condition.text}</div>
+    //         <div style="text-align: center;">${airQualityDescription}</div>
+    //         <div style="color: var(--color-accent); margin-bottom: 10px; text-align: center;">${airQualityContributors}</div>
+    //         <div style="display: flex; justify-content: center;">
+    //             <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
+    //                 <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day1 === new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ? 'TODAY' : date_day1}</div>
+    //                 <img src="http:${icon_day1}" alt="Day 1" style="width: 48px; height: 48px;" />
+    //                 <div>${chance_rain_day1}%</div>
+    //             </div>
+    //             <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
+    //                 <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day2}</div>
+    //                 <img src="http:${icon_day2}" alt="Day 2" style="width: 48px; height: 48px;" />
+    //                 <div>${chance_rain_day2}%</div>
+    //             </div>
+    //             <div style="display: flex; flex-direction: column; align-items: center;">
+    //                 <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day3}</div>
+    //                 <img src="http:${icon_day3}" alt="Day 3" style="width: 48px; height: 48px;" />
+    //                 <div>${chance_rain_day3}%</div>
+    //             </div>
+    //         </div>
+    //         <div style="color: gray; margin-right: 5px; margin-bottom: 30px; font-size: 0.7em; text-align: right;">${location.localtime}</div>
+    //     </div>
+
+    //   `;
+    // }
+
     createWeatherHTML(data: WeatherAPIResponse): string {
         const { current, location, forecast } = data;
         const { condition, air_quality, uv } = current;
+
+        const aqi = calculateAQI(
+            air_quality.co,
+            air_quality.no2,
+            air_quality.o3,
+            air_quality.so2,
+            air_quality.pm2_5,
+            air_quality.pm10
+        );
+
+        const getAirQualityColor = (index: number): string => {
+            switch (index) {
+                case 1:
+                    return '#008000'; // Green
+                case 2:
+                    return '#FFFF00'; // Yellow
+                case 3:
+                    return '#FFA500'; // Orange
+                case 4:
+                    return '#FF0000'; // Red
+                case 5:
+                    return '#800080'; // Purple
+                case 6:
+                    return '#800000'; // Maroon
+                default:
+                    return '#000000'; // Default color for unknown values
+            }
+        };
+
+        const { emoji: airQualityEmoji, text: airQualityText, mainContributors: unsafeContributors } = describeAirQuality(air_quality);
+
+        const airQualityIndex = air_quality["us-epa-index"];
+        const airQualityColor = getAirQualityColor(airQualityIndex);
+
+
+
+        const airQualityDescription = `${airQualityEmoji} ${airQualityText} (AQI: ${aqi}`;
+
+        const airQualityContributors = `${unsafeContributors}`;
+
+        const uvIndexDescription = getUVIndexDescription(uv);
+        const uvIndexText = `${uv} - ${uvIndexDescription}`;
 
         const forecastDay1 = forecast?.forecastday[0];
         const forecastDay2 = forecast?.forecastday[1];
@@ -412,86 +580,241 @@ export default class ObsidianWeatherPlugin extends Plugin {
         let chance_rain_day2 = forecastDay2?.day.daily_chance_of_rain.toString() || "";
         let chance_rain_day3 = forecastDay3?.day.daily_chance_of_rain.toString() || "";
 
+        if (chance_rain_day1 === "0") {
+            chance_rain_day1 = "-";
+        } else {
+            chance_rain_day1 = chance_rain_day1 + "%";
+        }
 
-        const aqi = calculateAQI(
-            air_quality.co,
-            air_quality.no2,
-            air_quality.o3,
-            air_quality.so2,
-            air_quality.pm2_5,
-            air_quality.pm10
-        );
+        if (chance_rain_day2 === "0") {
+            chance_rain_day2 = "-";
+        } else {
+            chance_rain_day2 = chance_rain_day2 + "%";
+        }
 
-        const { emoji: airQualityEmoji, text: airQualityText, mainContributors: unsafeContributors } = describeAirQuality(air_quality);
+        if (chance_rain_day3 === "0") {
+            chance_rain_day3 = "-";
+        } else {
+            chance_rain_day3 = chance_rain_day3 + "%";
+        }
 
-        // const airQualityDescription = `${airQualityEmoji} ${airQualityText}`;
-        const airQualityDescription = `${airQualityEmoji} ${airQualityText} (AQI: ${aqi})`;
+        const containerEl = document.createElement('div');
+        containerEl.style.textAlign = 'center';
 
+        const locationEl = document.createElement('div');
+        locationEl.style.fontSize = '1.2em';
+        locationEl.style.marginBottom = '-20px';
+        locationEl.textContent = location.name;
+        containerEl.appendChild(locationEl);
 
-        const airQualityContributors = `${unsafeContributors}`;
+        containerEl.appendChild(locationEl);
 
-        const uvIndexDescription = getUVIndexDescription(uv);
-        const uvIndexText = `UV: ${uv} - ${uvIndexDescription}`;
+        const flexContainerEl = document.createElement('div');
+        flexContainerEl.style.display = 'flex';
+        flexContainerEl.style.alignItems = 'center';
+        flexContainerEl.style.justifyContent = 'center';
 
+        const iconContainerEl = document.createElement('div');
+        iconContainerEl.style.marginRight = '5px';
 
-        return `
-        <div style="text-align: center;">
-            <div style="font-size: 1.2em; margin-bottom: -20px;">${location.name}</div>
-            <div style="display: flex; align-items: center; justify-content: center;">
-                <div style="margin-right: 5px;">
-                    <img src="http:${condition.icon}" alt="${condition.text}" style="width: 128px; height: 128px;" />
-                </div>
-                <div style="margin-left: 5px; text-align: center; display: flex; flex-direction: column;">
-                    <div>${current.temp_c}°C <span style="font-size: 1.1em; font-weight: bold; color: var(--color-accent);">${current.feelslike_c}°C</span></div>
-                    <div>Humidity: ${current.humidity}%</div>
-                    <div>${uvIndexText}</div>
-                </div>
-            </div>
-            <div style="color: var(--color-accent); font-size: 1.2em; margin-top: -20px; text-align: center;">${condition.text}</div>
-            <div style="text-align: center;">${airQualityDescription}</div>
-            <div style="color: var(--color-accent); margin-bottom: 10px; text-align: center;">${airQualityContributors}</div>
-            <div style="display: flex; justify-content: center;">
-                <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
-                    <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day1 === new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ? 'TODAY' : date_day1}</div>
-                    <img src="http:${icon_day1}" alt="Day 1" style="width: 48px; height: 48px;" />
-                    <div>${chance_rain_day1}%</div>
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
-                    <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day2}</div>
-                    <img src="http:${icon_day2}" alt="Day 2" style="width: 48px; height: 48px;" />
-                    <div>${chance_rain_day2}%</div>
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <div style="font-size: 0.8em; margin-bottom: 5px;">${date_day3}</div>
-                    <img src="http:${icon_day3}" alt="Day 3" style="width: 48px; height: 48px;" />
-                    <div>${chance_rain_day3}%</div>
-                </div>
-            </div>
-            <div style="color: gray; margin-right: 5px; margin-bottom: 30px; font-size: 0.7em; text-align: right;">${location.localtime}</div>
-        </div>
-      
-      `;
+        const iconEl = document.createElement('img');
+        iconEl.src = `http:${condition.icon}`;
+        iconEl.alt = condition.text;
+        iconEl.style.width = '100px';
+        iconEl.style.height = '100px';
+        iconContainerEl.appendChild(iconEl);
+        flexContainerEl.appendChild(iconContainerEl);
+
+        const infoContainerEl = document.createElement('div');
+        infoContainerEl.style.marginLeft = '5px';
+        infoContainerEl.style.textAlign = 'center';
+        infoContainerEl.style.display = 'flex';
+        infoContainerEl.style.flexDirection = 'column';
+
+        const temperatureContainerEl = document.createElement('div');
+        temperatureContainerEl.style.display = 'flex';
+        temperatureContainerEl.style.alignItems = 'center';
+        temperatureContainerEl.style.justifyContent = 'center';
+
+        const temperatureEl = document.createElement('div');
+        temperatureEl.textContent = `${current.temp_c}°C`;
+
+        const spaceEl = document.createElement('span');
+        spaceEl.style.marginLeft = '0.2em';
+        spaceEl.style.marginRight = '0.2em';
+        spaceEl.textContent = '\u00A0'; // Non-breaking space
+
+        const feelsLikeEl = document.createElement('span');
+        feelsLikeEl.style.fontWeight = 'bold';
+        feelsLikeEl.style.color = 'var(--color-accent)';
+        feelsLikeEl.textContent = `${current.feelslike_c}°C`;
+
+        temperatureEl.appendChild(spaceEl);
+        temperatureEl.appendChild(feelsLikeEl);
+
+        temperatureContainerEl.appendChild(temperatureEl);
+        temperatureContainerEl.appendChild(feelsLikeEl);
+
+        const humidityEl = document.createElement('div');
+        humidityEl.textContent = `Humidity: ${current.humidity}%`;
+        const uvEl = document.createElement('div');
+        uvEl.textContent = `UV: ${uvIndexText}`;
+        infoContainerEl.appendChild(temperatureContainerEl);
+        infoContainerEl.appendChild(humidityEl);
+        infoContainerEl.appendChild(uvEl);
+        flexContainerEl.appendChild(infoContainerEl);
+
+        containerEl.appendChild(flexContainerEl);
+
+        const conditionTextEl = document.createElement('div');
+        conditionTextEl.style.color = 'var(--color-accent)';
+        conditionTextEl.style.fontSize = '1.2em';
+        conditionTextEl.style.marginTop = '-20px';
+        conditionTextEl.style.textAlign = 'center';
+        conditionTextEl.textContent = condition.text;
+        containerEl.appendChild(conditionTextEl);
+
+        const airQualityDescEl = document.createElement('div');
+        airQualityDescEl.style.textAlign = 'center';
+        airQualityDescEl.style.fontSize = '0.9em';
+        airQualityDescEl.textContent = airQualityDescription;
+
+        const circleEl = document.createElement('div');
+        circleEl.style.display = 'inline-block';
+        circleEl.style.width = '10px';
+        circleEl.style.height = '10px';
+        circleEl.style.borderRadius = '50%';
+        circleEl.style.marginLeft = '5px';
+        circleEl.style.marginRight = '5px'; // Added right margin
+        circleEl.style.backgroundColor = airQualityColor;
+
+        airQualityDescEl.appendChild(document.createTextNode(' -'));
+        airQualityDescEl.appendChild(circleEl);
+        airQualityDescEl.appendChild(document.createTextNode(')'));
+
+        containerEl.appendChild(airQualityDescEl);
+
+        const airQualityContributorsEl = document.createElement('div');
+        airQualityContributorsEl.style.color = 'var(--color-accent)';
+        airQualityContributorsEl.style.fontSize = '0.9em';
+        airQualityContributorsEl.style.marginBottom = '10px';
+        airQualityContributorsEl.style.textAlign = 'center';
+        airQualityContributorsEl.textContent = airQualityContributors;
+        containerEl.appendChild(airQualityContributorsEl);
+
+        const forecastContainerEl = document.createElement('div');
+        forecastContainerEl.style.display = 'flex';
+        forecastContainerEl.style.justifyContent = 'center';
+
+        const forecastDay1ContainerEl = document.createElement('div');
+        forecastDay1ContainerEl.style.display = 'flex';
+        forecastDay1ContainerEl.style.flexDirection = 'column';
+        forecastDay1ContainerEl.style.alignItems = 'center';
+        forecastDay1ContainerEl.style.marginRight = '10px';
+
+        const forecastDay1DateEl = document.createElement('div');
+        forecastDay1DateEl.style.fontSize = '0.8em';
+        forecastDay1DateEl.style.marginBottom = '5px';
+        forecastDay1DateEl.textContent = date_day1 === new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ? 'TODAY' : date_day1;
+        forecastDay1ContainerEl.appendChild(forecastDay1DateEl);
+
+        const forecastDay1IconEl = document.createElement('img');
+        forecastDay1IconEl.src = `http:${icon_day1}`;
+        forecastDay1IconEl.alt = 'Day 1';
+        forecastDay1IconEl.style.width = '48px';
+        forecastDay1IconEl.style.height = '48px';
+        forecastDay1ContainerEl.appendChild(forecastDay1IconEl);
+
+        const forecastDay1RainEl = document.createElement('div');
+        forecastDay1RainEl.textContent = `${chance_rain_day1}`;
+        forecastDay1ContainerEl.appendChild(forecastDay1RainEl);
+
+        forecastContainerEl.appendChild(forecastDay1ContainerEl);
+
+        const forecastDay2ContainerEl = document.createElement('div');
+        forecastDay2ContainerEl.style.display = 'flex';
+        forecastDay2ContainerEl.style.flexDirection = 'column';
+        forecastDay2ContainerEl.style.alignItems = 'center';
+        forecastDay2ContainerEl.style.marginRight = '10px';
+
+        const forecastDay2DateEl = document.createElement('div');
+        forecastDay2DateEl.style.fontSize = '0.8em';
+        forecastDay2DateEl.style.marginBottom = '5px';
+        forecastDay2DateEl.textContent = date_day2;
+        forecastDay2ContainerEl.appendChild(forecastDay2DateEl);
+
+        const forecastDay2IconEl = document.createElement('img');
+        forecastDay2IconEl.src = `http:${icon_day2}`;
+        forecastDay2IconEl.alt = 'Day 2';
+        forecastDay2IconEl.style.width = '48px';
+        forecastDay2IconEl.style.height = '48px';
+        forecastDay2ContainerEl.appendChild(forecastDay2IconEl);
+
+        const forecastDay2RainEl = document.createElement('div');
+        forecastDay2RainEl.textContent = `${chance_rain_day2}`;
+        forecastDay2ContainerEl.appendChild(forecastDay2RainEl);
+
+        forecastContainerEl.appendChild(forecastDay2ContainerEl);
+
+        const forecastDay3ContainerEl = document.createElement('div');
+        forecastDay3ContainerEl.style.display = 'flex';
+        forecastDay3ContainerEl.style.flexDirection = 'column';
+        forecastDay3ContainerEl.style.alignItems = 'center';
+
+        const forecastDay3DateEl = document.createElement('div');
+        forecastDay3DateEl.style.fontSize = '0.8em';
+        forecastDay3DateEl.style.marginBottom = '5px';
+        forecastDay3DateEl.textContent = date_day3;
+        forecastDay3ContainerEl.appendChild(forecastDay3DateEl);
+
+        const forecastDay3IconEl = document.createElement('img');
+        forecastDay3IconEl.src = `http:${icon_day3}`;
+        forecastDay3IconEl.alt = 'Day 3';
+        forecastDay3IconEl.style.width = '48px';
+        forecastDay3IconEl.style.height = '48px';
+        forecastDay3ContainerEl.appendChild(forecastDay3IconEl);
+
+        const forecastDay3RainEl = document.createElement('div');
+        forecastDay3RainEl.textContent = `${chance_rain_day3}`;
+        forecastDay3ContainerEl.appendChild(forecastDay3RainEl);
+
+        forecastContainerEl.appendChild(forecastDay3ContainerEl);
+
+        containerEl.appendChild(forecastContainerEl);
+
+        const localTimeEl = document.createElement('div');
+        localTimeEl.style.color = 'gray';
+        localTimeEl.style.marginRight = '5px';
+        localTimeEl.style.marginBottom = '30px';
+        localTimeEl.style.fontSize = '0.7em';
+        localTimeEl.style.textAlign = 'right';
+        localTimeEl.textContent = location.localtime;
+        containerEl.appendChild(localTimeEl);
+
+        return containerEl.outerHTML;
+
     }
 
 
 
 
-// Function to update the weather leaf
-updateWeatherLeaf(weatherHTML: string) {
-    const leaves = this.app.workspace.getLeavesOfType('WeatherView');
-    if (leaves.length) {
-        const view = leaves[0].view as WeatherView;
-        // view.contentEl.innerHTML = weatherHTML;
-        view.setContent(weatherHTML);
+
+    // Function to update the weather leaf
+    updateWeatherLeaf(weatherHTML: string) {
+        const leaves = this.app.workspace.getLeavesOfType('WeatherView');
+        if (leaves.length) {
+            const view = leaves[0].view as WeatherView;
+            // view.contentEl.innerHTML = weatherHTML;
+            view.setContent(weatherHTML);
+        }
     }
-}
 
     async onunload() {
-    if (this.refreshTimer) {
-        clearTimeout(this.refreshTimer); // Clear the timer when unloading the plugin
+        if (this.refreshTimer) {
+            clearTimeout(this.refreshTimer); // Clear the timer when unloading the plugin
+        }
+        await this.saveData(this.settings);
     }
-    await this.saveData(this.settings);
-}
 
 }
 
