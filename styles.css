@@ -1,8 +1,117 @@
-/*
+body {
+	--weather--color-accent: var(--color-accent);
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.weather__base {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding-bottom: 30px;
+}
 
-If your plugin does not need CSS, delete this file.
+.weather__location {
+	font-size: 1.2em;
+}
 
-*/
+.weather__info {
+	display: flex;
+	flex-direction: column;
+}
+
+.weather__info>div {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+}
+
+.weather__info>div>div:nth-child(1) {
+	margin-right: 0.2em;
+}
+
+.weather__info .weather__feels-like {
+	color: var(--weather--color-accent);
+}
+
+.weather__condition {
+	color: var(--weather--color-accent);
+	font-size: 1.2em;
+}
+
+.weather__aq-contributors {
+	color: var(--weather--color-accent);
+	font-size: 0.9em;
+}
+
+.weather__aqi {
+	font-size: 0.9em;
+}
+
+.weather__aqi-circle {
+	display: inline-block;
+	width: 10px;
+	aspect-ratio: 1/1;
+	border-radius: 50%;
+	margin: 5px;
+	background-color: #000000;
+}
+
+.weather__aqi-circle--1 {
+	background-color: #008000;
+}
+
+.weather__aqi-circle--2 {
+	background-color: #FFFF00;
+}
+
+.weather__aqi-circle--3 {
+	background-color: #FFA500;
+}
+
+.weather__aqi-circle--4 {
+	background-color: #FF0000;
+}
+
+.weather__aqi-circle--5 {
+	background-color: #800080;
+}
+
+.weather__aqi-circle--6 {
+	background-color: #800000;
+}
+
+.weather__icon {
+	margin: -15px 0;
+}
+
+.weather__icon.weather__icon-secondary {
+	margin: unset;
+	width: 48px;
+	aspect-ratio: 1/1;
+}
+
+.weather__forecast {
+	margin-top: 1em;
+	display: flex;
+	width: 80%;
+	justify-content: space-around;
+}
+
+.weather__forecast-day {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.weather__forecast-date {
+	font-size: 0.8em;
+}
+
+.weather__forecast-rain-chance {}
+
+.weather__localtime {
+	color: gray;
+	font-size: 0.7em;
+	align-self: end;
+	margin-top: 1em;
+	margin-right: 2em;
+}
