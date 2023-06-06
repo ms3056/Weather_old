@@ -173,7 +173,7 @@ function calculateAQI(co: number, no2: number, o3: number, so2: number, pm25: nu
 function describeAirQuality(data: AirQuality): { emoji: string, text: string, mainContributors: string } {
     const aqi = calculateAQI(data.co, data.no2, data.o3, data.so2, data.pm2_5, data.pm10);
     let unsafeDescriptions = "";
-    if (aqi > 50) {
+    if (aqi > 100) {
         const unsafePollutants = [
             { name: 'CO', value: data.co },
             { name: 'NO2', value: data.no2 },
@@ -321,19 +321,19 @@ export default class ObsidianWeatherPlugin extends Plugin {
 
                 // Extract forecast and rain info for each day
                 const forecastDay1 = forecastday[0];
-                const chance_rain_day1 = forecastDay1.day.daily_chance_of_rain;
-                const icon_day1 = forecastDay1.day.condition.icon;
-                const description_day1 = forecastDay1.day.condition.text;
+                // const chance_rain_day1 = forecastDay1.day.daily_chance_of_rain;
+                // const icon_day1 = forecastDay1.day.condition.icon;
+                // const description_day1 = forecastDay1.day.condition.text;
 
                 const forecastDay2 = forecastday[1];
-                const chance_rain_day2 = forecastDay2.day.daily_chance_of_rain;
-                const icon_day2 = forecastDay2.day.condition.icon;
-                const description_day2 = forecastDay2.day.condition.text;
+                // const chance_rain_day2 = forecastDay2.day.daily_chance_of_rain;
+                // const icon_day2 = forecastDay2.day.condition.icon;
+                // const description_day2 = forecastDay2.day.condition.text;
 
                 const forecastDay3 = forecastday[2];
-                const chance_rain_day3 = forecastDay3.day.daily_chance_of_rain;
-                const icon_day3 = forecastDay3.day.condition.icon;
-                const description_day3 = forecastDay3.day.condition.text;
+                // const chance_rain_day3 = forecastDay3.day.daily_chance_of_rain;
+                // const icon_day3 = forecastDay3.day.condition.icon;
+                // const description_day3 = forecastDay3.day.condition.text;
 
                 // Remaining code...
 
@@ -468,8 +468,6 @@ export default class ObsidianWeatherPlugin extends Plugin {
         locationEl.style.fontSize = '1.2em';
         locationEl.style.marginBottom = '-20px';
         locationEl.textContent = location.name;
-        containerEl.appendChild(locationEl);
-
         containerEl.appendChild(locationEl);
 
         const flexContainerEl = document.createElement('div');
@@ -678,7 +676,6 @@ export default class ObsidianWeatherPlugin extends Plugin {
         }
         await this.saveData(this.settings);
     }
-
 }
 
 class WeatherSettingTab extends PluginSettingTab {
