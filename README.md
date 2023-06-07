@@ -2,6 +2,10 @@
 
 This is a weather plugin for Obsidian (https://obsidian.md).
 
+![image](https://github.com/ms3056/Obsidian-Weather/assets/23712700/3a3f9ced-5559-483d-ab44-fde3fcd558d0)
+
+## Styles
+- I have added a few style methods - see the styles.css file to override them with your own snippets. 
 
 ## Manually installing the plugin
 
