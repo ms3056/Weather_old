@@ -1,5 +1,5 @@
 // Importing necessary libraries from 'obsidian'
-import { App, ItemView, WorkspaceLeaf, Plugin, PluginSettingTab, Setting, MarkdownView } from 'obsidian';
+import { App, ItemView, WorkspaceLeaf, Plugin, PluginSettingTab, Setting, MarkdownView, setIcon } from 'obsidian';
 
 interface Condition {
     text: string;
@@ -20,6 +20,8 @@ interface AirQuality {
 interface Current {
     temp_c: number;
     feelslike_c: number;
+    temp_f: number;
+    feelslike_f: number;
     condition: Condition;
     wind_kph: number;
     humidity: number;
@@ -90,12 +92,16 @@ interface WeatherPluginSettings {
     location: string;
     apiKey: string;
     refreshRate: number; // new setting for refresh rate in minutes
+    temperatureUnit: 'C' | 'F';
+    hideAirQuality: boolean | false;
 }
 
 const DEFAULT_SETTINGS: WeatherPluginSettings = {
     location: '',
     apiKey: '',
     refreshRate: 30,  // default refresh rate is 30 minutes
+    temperatureUnit: 'C',
+    hideAirQuality: false
 };
 
 function linearInterpolate(value: number, x: number[], y: number[]): number {
@@ -228,16 +234,47 @@ function getUVIndexDescription(uvIndex: number): string {
 
 class WeatherView extends ItemView {
     plugin: ObsidianWeatherPlugin;
+    containerEl: HTMLElement; //new
     contentEl: HTMLElement;
 
     constructor(leaf: WorkspaceLeaf, plugin: ObsidianWeatherPlugin) {
         super(leaf);
         this.plugin = plugin;
-        this.contentEl = this.containerEl.createDiv();
 
+        this.containerEl = createDiv();
+        this.containerEl.className = 'obsidian-weather-plugin';
 
-        // Refresh the weather when the view is created
-        this.plugin.refreshWeather();
+        this.contentEl = createDiv();
+        this.contentEl.className = 'weather-content';
+
+        this.setContent('');
+
+        this.setButtons();
+
+        this.containerEl.appendChild(this.contentEl);
+
+    }
+
+    setButtons() {
+        const refreshIcon = createEl('div');
+        refreshIcon.className = 'weather-refresh-button';
+
+        setIcon(refreshIcon, 'refresh-ccw');
+
+        refreshIcon.onclick = () => {
+            this.plugin.refreshWeather();
+        };
+
+        const iconContainer = createDiv();
+        iconContainer.className = 'weather-icon-container';
+        iconContainer.appendChild(refreshIcon);
+
+        this.containerEl.appendChild(iconContainer);
+
+    }
+
+    setContent(weatherHTML: string) {
+        this.contentEl.innerHTML = weatherHTML;
     }
 
 
@@ -254,11 +291,6 @@ class WeatherView extends ItemView {
         return 'cloud-sun'; // Or whatever icon you want to use
     }
 
-    setContent(html: string) {
-        this.contentEl.innerHTML = html;
-
-    }
-
     async onOpen() {
         // Schedule the initial refresh when the view is opened
         this.plugin.scheduleRefresh();
@@ -268,7 +300,6 @@ class WeatherView extends ItemView {
 export default class ObsidianWeatherPlugin extends Plugin {
     settings: WeatherPluginSettings;
     refreshTimer: NodeJS.Timeout | null = null; // timer for scheduling refreshes
-
 
     async onload() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -317,28 +348,10 @@ export default class ObsidianWeatherPlugin extends Plugin {
             const data: WeatherAPIResponse = await response.json();
 
             if (data.forecast) {
-                const { forecastday } = data.forecast;
-
-                // Extract forecast and rain info for each day
-                const forecastDay1 = forecastday[0];
-                // const chance_rain_day1 = forecastDay1.day.daily_chance_of_rain;
-                // const icon_day1 = forecastDay1.day.condition.icon;
-                // const description_day1 = forecastDay1.day.condition.text;
-
-                const forecastDay2 = forecastday[1];
-                // const chance_rain_day2 = forecastDay2.day.daily_chance_of_rain;
-                // const icon_day2 = forecastDay2.day.condition.icon;
-                // const description_day2 = forecastDay2.day.condition.text;
-
-                const forecastDay3 = forecastday[2];
-                // const chance_rain_day3 = forecastDay3.day.daily_chance_of_rain;
-                // const icon_day3 = forecastDay3.day.condition.icon;
-                // const description_day3 = forecastDay3.day.condition.text;
-
-                // Remaining code...
 
                 const weatherHTML = this.createWeatherHTML(data);
                 this.updateWeatherLeaf(weatherHTML);
+
             }
         } catch (error) {
             console.error('Error fetching weather data:', error);
@@ -354,8 +367,10 @@ export default class ObsidianWeatherPlugin extends Plugin {
             clearTimeout(this.refreshTimer);
         }
 
-        // Schedule a new timer
-        this.refreshTimer = setTimeout(() => this.refreshWeather(), this.settings.refreshRate * 60 * 1000);
+        // Schedule a new timer only if refreshRate is not set to 999
+        if (this.settings.refreshRate !== 999) {
+            this.refreshTimer = setTimeout(() => this.refreshWeather(), this.settings.refreshRate * 60 * 1000);
+        }
     }
 
     async loadSettings() {
@@ -408,8 +423,6 @@ export default class ObsidianWeatherPlugin extends Plugin {
 
         const airQualityIndex = air_quality["us-epa-index"];
         const airQualityColor = getAirQualityColor(airQualityIndex);
-
-
 
         const airQualityDescription = `${airQualityEmoji} ${airQualityText} (AQI: ${aqi}`;
 
@@ -465,8 +478,7 @@ export default class ObsidianWeatherPlugin extends Plugin {
         containerEl.style.textAlign = 'center';
 
         const locationEl = document.createElement('div');
-        locationEl.style.fontSize = '1.2em';
-        locationEl.style.marginBottom = '-20px';
+        locationEl.className = 'location-name';
         locationEl.textContent = location.name;
         containerEl.appendChild(locationEl);
 
@@ -487,7 +499,6 @@ export default class ObsidianWeatherPlugin extends Plugin {
         flexContainerEl.appendChild(iconContainerEl);
 
         const infoContainerEl = document.createElement('div');
-        infoContainerEl.style.marginLeft = '5px';
         infoContainerEl.style.textAlign = 'center';
         infoContainerEl.style.display = 'flex';
         infoContainerEl.style.flexDirection = 'column';
@@ -498,28 +509,45 @@ export default class ObsidianWeatherPlugin extends Plugin {
         temperatureContainerEl.style.justifyContent = 'center';
 
         const temperatureEl = document.createElement('div');
-        temperatureEl.textContent = `${current.temp_c}°C`;
-
-        const spaceEl = document.createElement('span');
-        spaceEl.style.marginLeft = '0.2em';
-        spaceEl.style.marginRight = '0.2em';
-        spaceEl.textContent = '\u00A0'; // Non-breaking space
-
         const feelsLikeEl = document.createElement('span');
-        feelsLikeEl.style.fontWeight = 'bold';
-        feelsLikeEl.style.color = 'var(--color-accent)';
-        feelsLikeEl.textContent = `${current.feelslike_c}°C`;
+        feelsLikeEl.className = 'feels-like';
 
-        temperatureEl.appendChild(spaceEl);
+        if (this.settings.temperatureUnit === 'C') {
+            temperatureEl.textContent = `${current.temp_c}°C`;
+            feelsLikeEl.textContent = `${current.feelslike_c}°C`;
+        } else {
+            temperatureEl.textContent = `${current.temp_f}°F`;
+            feelsLikeEl.textContent = `${current.feelslike_f}°F`;
+        }
+
+        const spaceE1 = document.createElement('span');
+        spaceE1.style.marginLeft = '0.2em';
+        spaceE1.style.marginRight = '0.2em';
+        spaceE1.textContent = '\u00A0'; // Non-breaking space
+
+        const spaceE2 = document.createElement('span');
+        spaceE2.style.marginLeft = '0.2em';
+        spaceE2.style.marginRight = '0.2em';
+        spaceE2.textContent = '\u00A0'; // Non-breaking space
+
+        temperatureEl.appendChild(spaceE1);
         temperatureEl.appendChild(feelsLikeEl);
-
         temperatureContainerEl.appendChild(temperatureEl);
-        temperatureContainerEl.appendChild(feelsLikeEl);
+
 
         const humidityEl = document.createElement('div');
-        humidityEl.textContent = `Humidity: ${current.humidity}%`;
+        humidityEl.textContent = `Humidity:`;
+
+
+        const humidityValueE1 = document.createElement('span');
+        humidityValueE1.className = `humidity`;
+        humidityValueE1.textContent = `${current.humidity}%`;
+        humidityEl.appendChild(spaceE2);
+        humidityEl.appendChild(humidityValueE1);
+
         const uvEl = document.createElement('div');
         uvEl.textContent = `UV: ${uvIndexText}`;
+
         infoContainerEl.appendChild(temperatureContainerEl);
         infoContainerEl.appendChild(humidityEl);
         infoContainerEl.appendChild(uvEl);
@@ -528,40 +556,40 @@ export default class ObsidianWeatherPlugin extends Plugin {
         containerEl.appendChild(flexContainerEl);
 
         const conditionTextEl = document.createElement('div');
-        conditionTextEl.style.color = 'var(--color-accent)';
-        conditionTextEl.style.fontSize = '1.2em';
-        conditionTextEl.style.marginTop = '-20px';
-        conditionTextEl.style.textAlign = 'center';
+        conditionTextEl.className = 'condition-text';
         conditionTextEl.textContent = condition.text;
         containerEl.appendChild(conditionTextEl);
 
-        const airQualityDescEl = document.createElement('div');
-        airQualityDescEl.style.textAlign = 'center';
-        airQualityDescEl.style.fontSize = '0.9em';
-        airQualityDescEl.textContent = airQualityDescription;
+        if (!this.settings.hideAirQuality) {
 
-        const circleEl = document.createElement('div');
-        circleEl.style.display = 'inline-block';
-        circleEl.style.width = '10px';
-        circleEl.style.height = '10px';
-        circleEl.style.borderRadius = '50%';
-        circleEl.style.marginLeft = '5px';
-        circleEl.style.marginRight = '5px'; // Added right margin
-        circleEl.style.backgroundColor = airQualityColor;
+            const airQualityDescEl = document.createElement('div');
+            airQualityDescEl.style.textAlign = 'center';
+            airQualityDescEl.style.fontSize = '0.9em';
+            airQualityDescEl.textContent = airQualityDescription;
 
-        airQualityDescEl.appendChild(document.createTextNode(' -'));
-        airQualityDescEl.appendChild(circleEl);
-        airQualityDescEl.appendChild(document.createTextNode(')'));
+            const circleEl = document.createElement('div');
+            circleEl.style.display = 'inline-block';
+            circleEl.style.width = '10px';
+            circleEl.style.height = '10px';
+            circleEl.style.borderRadius = '50%';
+            circleEl.style.marginLeft = '5px';
+            circleEl.style.marginRight = '5px'; // Added right margin
+            circleEl.style.backgroundColor = airQualityColor;
 
-        containerEl.appendChild(airQualityDescEl);
+            airQualityDescEl.appendChild(document.createTextNode(' -'));
+            airQualityDescEl.appendChild(circleEl);
+            airQualityDescEl.appendChild(document.createTextNode(')'));
 
-        const airQualityContributorsEl = document.createElement('div');
-        airQualityContributorsEl.style.color = 'var(--color-accent)';
-        airQualityContributorsEl.style.fontSize = '0.9em';
-        airQualityContributorsEl.style.marginBottom = '10px';
-        airQualityContributorsEl.style.textAlign = 'center';
-        airQualityContributorsEl.textContent = airQualityContributors;
-        containerEl.appendChild(airQualityContributorsEl);
+            containerEl.appendChild(airQualityDescEl);
+
+            const airQualityContributorsEl = document.createElement('div');
+            airQualityContributorsEl.style.color = 'var(--color-accent)';
+            airQualityContributorsEl.style.fontSize = '0.9em';
+            airQualityContributorsEl.style.marginBottom = '10px';
+            airQualityContributorsEl.style.textAlign = 'center';
+            airQualityContributorsEl.textContent = airQualityContributors;
+            containerEl.appendChild(airQualityContributorsEl);
+        }
 
         const forecastContainerEl = document.createElement('div');
         forecastContainerEl.style.display = 'flex';
@@ -644,21 +672,13 @@ export default class ObsidianWeatherPlugin extends Plugin {
         containerEl.appendChild(forecastContainerEl);
 
         const localTimeEl = document.createElement('div');
-        localTimeEl.style.color = 'gray';
-        localTimeEl.style.marginRight = '5px';
-        localTimeEl.style.marginBottom = '30px';
-        localTimeEl.style.fontSize = '0.7em';
-        localTimeEl.style.textAlign = 'right';
+        localTimeEl.className = 'update-time';
         localTimeEl.textContent = location.localtime;
         containerEl.appendChild(localTimeEl);
 
         return containerEl.outerHTML;
 
     }
-
-
-
-
 
     // Function to update the weather leaf
     updateWeatherLeaf(weatherHTML: string) {
@@ -691,6 +711,31 @@ class WeatherSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
+            .setName('Temperature Unit')
+            .setDesc('Toggle ON for Imperial')
+            .addToggle((toggle) => {
+                toggle.setValue(this.plugin.settings.temperatureUnit === 'F');
+                toggle.onChange(async (value) => {
+                    this.plugin.settings.temperatureUnit = value ? 'F' : 'C';
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshWeather();
+                });
+            });
+
+        new Setting(containerEl)
+            .setName('Hide Air Quality')
+            .setDesc('Toggle to hide the air quality information')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.hideAirQuality)
+                .onChange(async (value) => {
+                    this.plugin.settings.hideAirQuality = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshWeather(); // Refresh the weather data
+                })
+            );
+
+
+        new Setting(containerEl)
             .setName('Location')
             .setDesc('Set your location')
             .addText(text => {
@@ -713,6 +758,9 @@ class WeatherSettingTab extends PluginSettingTab {
 
                         // Reset border color after pressing 'Enter'
                         (event.target as HTMLInputElement).style.borderColor = '';
+
+                        // Remove focus from the text field
+                        inputEl.blur();
                     }
                 });
 
@@ -721,7 +769,7 @@ class WeatherSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('API Key')
-            .setDesc('Set your OpenWeatherMap API Key')
+            .setDesc('Set your weatherapi.com API Key')
             .addText(text => text
                 .setPlaceholder('Enter your API Key')
                 .setValue(this.plugin.settings.apiKey)
@@ -733,7 +781,7 @@ class WeatherSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Refresh Rate')
-            .setDesc('Set the refresh rate in minutes')
+            .setDesc('Set the refresh rate in minutes. Enter 999 to disable the refresh.')
             .addText(text => text
                 .setPlaceholder('Enter the refresh rate')
                 .setValue(this.plugin.settings.refreshRate.toString())
